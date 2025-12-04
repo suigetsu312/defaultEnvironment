@@ -1,66 +1,46 @@
-# default setting
+# Ubuntu/Linux Dev Environment
 
-ubuntu/linux develop environment setting
+Opinionated setup for Ubuntu/Debian-based systems: zsh + Oh My Zsh, Powerlevel10k, Meslo Nerd Font, Vim (with markdown preview), and tmux. The installer is idempotent and non-interactive.
 
 ---
 
+## Quick Install
 
+- Clone and run:
 
-##  prerequisite
-
-* font
-
+```sh
+git clone https://github.com/suigetsu312/defaultEnvironment.git
+cd defaultEnvironment
+bash install.sh
 ```
 
-https://github.com/romkatv/powerlevel10k#meslo-nerd-font-patched-for-powerlevel10k
+- One-liner (remote):
 
+```sh
+curl -fsSL https://raw.githubusercontent.com/suigetsu312/defaultEnvironment/main/install.sh | bash
 ```
 
-## vim markdown preview
+## What It Does
 
-* install nvm
+- zsh + Oh My Zsh: Installs Oh My Zsh unattended and sets zsh as default shell.
+- Powerlevel10k: Installs theme and copies `~/.p10k.zsh` from `p10k.zsh.example`.
+- Fonts: Installs MesloLGS Nerd Font locally and refreshes font cache.
+- Vim: Installs vim-plug, copies `~/.vimrc` from `vimrc.example`, installs plugins.
+- Node.js: Installs nvm, Node.js LTS, yarn, and `instant-markdown-d` globally.
+- tmux: Copies `~/.tmux.conf` from `tmux.conf.example`.
 
-In order to using markdown preview plugin, we must install nodejs and related tools after execution the install.sh.
+## Requirements
 
+- Ubuntu/Debian with `apt-get` and internet access.
+- The script uses `sudo` for package installation.
 
+## After Install
 
-```shell
+- Terminal font: Set the terminal font to "MesloLGS NF" for best Powerlevel10k appearance.
+- New shell: Log out/in or restart the terminal to apply the zsh default shell.
+- Prompt config: In zsh, run `p10k configure` to customize your prompt.
 
-export NVM_DIR="$HOME/.nvm" && (
+## Notes
 
-
-
-   git clone https://github.com/nvm-sh/nvm.git "$NVM_DIR"
-
-
-
-     cd "$NVM_DIR"
-
-
-
-       git checkout `git describe --abbrev=0 --tags --match "v[0-9]*" $(git rev-list --tags --max-count=1)`
-
-
-
-) && \. "$NVM_DIR/nvm.sh"
-
-source ~/.zshrc
-
-nvm install --lts
-
-npm -g install instant-markdown-d
-
-```
-
-___
-
-
-
-## install
-
-During the installation of zsh, the shell will start zsh, and we must exit zsh ourselves to continue executing install.sh
-
-```shell
-sh install.sh
-
-```
+- The installer backs up existing dotfiles it overwrites (e.g., `~/.zshrc.bak.YYYYMMDD-HHMMSS`).
+- Re-running the installer is safe; it skips work that is already done.
