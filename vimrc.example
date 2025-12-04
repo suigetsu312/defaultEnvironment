@@ -21,3 +21,4 @@ set nocompatible
 " set cursorline
 set number
 set nofoldenable
+set clipboard=unnamedplus  " use system clipboard for yank/paste
