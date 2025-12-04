@@ -1,6 +1,6 @@
 # Ubuntu/Linux Dev Environment
 
-Opinionated setup for Ubuntu/Debian-based systems: zsh + Oh My Zsh, Powerlevel10k, Meslo Nerd Font, Vim (with markdown preview), and tmux. The installer is idempotent and non-interactive.
+Opinionated setup for Ubuntu/Debian-based systems: zsh + Oh My Zsh, Powerlevel10k, Meslo Nerd Font, Neovim (with Lazy.nvim config), and tmux. The installer is idempotent and non-interactive.
 
 ---
 
@@ -25,7 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/suigetsu312/defaultEnvironment/main
 - zsh + Oh My Zsh: Installs Oh My Zsh unattended and sets zsh as default shell.
 - Powerlevel10k: Installs theme and copies `~/.p10k.zsh` from `p10k.zsh.example`.
 - Fonts: Installs MesloLGS Nerd Font locally and refreshes font cache.
-- Vim: Installs vim-plug, copies `~/.vimrc` from `vimrc.example`, installs plugins.
+- Neovim: Installs Neovim, copies `~/.config/nvim/init.lua` (and `lazy-lock.json`) from `nvim/`, and runs Lazy to install plugins headlessly.
 - Node.js: Installs nvm, Node.js LTS, yarn, and `instant-markdown-d` globally.
 - tmux: Copies `~/.tmux.conf` from `tmux.conf.example`.
 

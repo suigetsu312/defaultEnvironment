@@ -37,7 +37,7 @@ info "Updating apt package index and installing base packages"
 if require_cmd apt-get; then
   sudo apt-get update -y
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    ca-certificates curl git zsh tmux vim xdg-utils fontconfig
+    ca-certificates curl git zsh tmux neovim xdg-utils fontconfig
 else
   warn "apt-get not found. Please install dependencies manually."
 fi
@@ -126,17 +126,20 @@ else
   warn "nvm not available in current shell; skip Node.js installation."
 fi
 
-# Vim + vim-plug + example config and plugins
-info "Installing Vim configuration and vim-plug"
-curl -fLo "$HOME/.vim/autoload/plug.vim" --create-dirs \
-  https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-backup_file "$HOME/.vimrc"
-cp -f vimrc.example "$HOME/.vimrc"
+# Neovim config (init.lua + lazy-lock)
+info "Installing Neovim configuration"
+NVIM_CONFIG_DIR="$HOME/.config/nvim"
+mkdir -p "$NVIM_CONFIG_DIR"
+backup_file "$NVIM_CONFIG_DIR/init.lua"
+cp -f nvim/init.lua "$NVIM_CONFIG_DIR/init.lua"
+cp -f nvim/lazy-lock.json "$NVIM_CONFIG_DIR/lazy-lock.json"
 
-# Install Vim plugins headlessly (optional but handy)
-if command -v vim >/dev/null 2>&1; then
-  info "Installing Vim plugins (non-interactive)"
-  vim -E -s -u "$HOME/.vimrc" +PlugInstall +qall || warn "Vim plugin installation had non-fatal issues."
+# Install Neovim plugins headlessly (optional but handy)
+if command -v nvim >/dev/null 2>&1; then
+  info "Installing Neovim plugins (non-interactive)"
+  nvim --headless "+Lazy! sync" +qa || warn "Neovim plugin installation had non-fatal issues."
+else
+  warn "Neovim not found in PATH; skipping plugin installation."
 fi
 
 # Tmux config
