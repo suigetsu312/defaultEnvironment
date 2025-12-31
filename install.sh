@@ -27,6 +27,18 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || return 1
 }
 
+install_cask() {
+  local cask=$1
+  if ! brew list --cask "$cask" >/dev/null 2>&1; then
+    info "Installing $cask (Homebrew-managed)"
+    if ! brew install --cask --force "$cask"; then
+      warn "Failed to install $cask; continuing."
+    fi
+  else
+    info "$cask already installed"
+  fi
+}
+
 OS_NAME=$(uname -s)
 if [ "$OS_NAME" != "Darwin" ]; then
   err "This branch is for macOS only. Current OS: $OS_NAME"
@@ -52,12 +64,7 @@ info "Updating Homebrew and installing base packages"
 brew update
 brew install git zsh tmux neovim curl
 
-if ! brew list --cask iterm2 >/dev/null 2>&1; then
-  info "Installing iTerm2"
-  brew install --cask iterm2
-else
-  info "iTerm2 already installed"
-fi
+install_cask iterm2
 
 # Install Oh My Zsh (unattended, don't switch shell now)
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
