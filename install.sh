@@ -27,19 +27,36 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || return 1
 }
 
-# Keep sudo alive (if available)
-if command -v sudo >/dev/null 2>&1; then
-  info "Caching sudo credentials (if prompted, enter your password)"
-  sudo -v || true
+OS_NAME=$(uname -s)
+if [ "$OS_NAME" != "Darwin" ]; then
+  err "This branch is for macOS only. Current OS: $OS_NAME"
+  exit 1
 fi
 
-info "Updating apt package index and installing base packages"
-if require_cmd apt-get; then
-  sudo apt-get update -y
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    ca-certificates curl git zsh tmux neovim xdg-utils fontconfig
+ensure_brew() {
+  if ! require_cmd brew; then
+    info "Installing Homebrew"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  fi
+
+  if [ -x /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [ -x /usr/local/bin/brew ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+}
+
+ensure_brew
+
+info "Updating Homebrew and installing base packages"
+brew update
+brew install git zsh tmux neovim curl
+
+if ! brew list --cask iterm2 >/dev/null 2>&1; then
+  info "Installing iTerm2"
+  brew install --cask iterm2
 else
-  warn "apt-get not found. Please install dependencies manually."
+  info "iTerm2 already installed"
 fi
 
 # Install Oh My Zsh (unattended, don't switch shell now)
@@ -71,10 +88,14 @@ backup_file "$HOME/.p10k.zsh"
 cp -f p10k.zsh.example "$HOME/.p10k.zsh"
 
 # Set default shell to zsh if needed
-if [ "${SHELL:-}" != "$(command -v zsh)" ]; then
+ZSH_BIN="$(command -v zsh)"
+if [ -x /bin/zsh ] && ! grep -qx "$ZSH_BIN" /etc/shells 2>/dev/null; then
+  ZSH_BIN="/bin/zsh"
+fi
+if [ "${SHELL:-}" != "$ZSH_BIN" ]; then
   if command -v chsh >/dev/null 2>&1; then
     info "Setting default shell to zsh (you may need to log out/in)"
-    chsh -s "$(command -v zsh)" || warn "Could not change default shell automatically."
+    chsh -s "$ZSH_BIN" || warn "Could not change default shell automatically."
   else
     warn "'chsh' not found; set default shell to zsh manually."
   fi
@@ -82,7 +103,7 @@ fi
 
 # Install Meslo Nerd Fonts locally for P10k
 info "Installing MesloLGS Nerd Font locally"
-FONT_DIR="$HOME/.local/share/fonts/MesloLGS-NF"
+FONT_DIR="$HOME/Library/Fonts"
 mkdir -p "$FONT_DIR"
 curl -fsSL -o "$FONT_DIR/MesloLGS%20NF%20Regular.ttf" \
   https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf
@@ -92,9 +113,6 @@ curl -fsSL -o "$FONT_DIR/MesloLGS%20NF%20Italic.ttf" \
   https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf
 curl -fsSL -o "$FONT_DIR/MesloLGS%20NF%20Bold%20Italic.ttf" \
   https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf
-if command -v fc-cache >/dev/null 2>&1; then
-  fc-cache -f "$HOME/.local/share/fonts" || true
-fi
 
 # NVM + Node.js LTS + Yarn + instant-markdown-d
 if [ ! -d "$HOME/.nvm" ]; then
