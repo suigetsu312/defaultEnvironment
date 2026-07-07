@@ -12,12 +12,16 @@ Opinionated setup for Ubuntu/Debian-based systems: zsh + Oh My Zsh, Powerlevel10
 git clone https://github.com/suigetsu312/defaultEnvironment.git
 cd defaultEnvironment
 bash install.sh
+# To replace existing dotfiles after backing them up:
+bash install.sh --force
 ```
 
 - One-liner (remote):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/suigetsu312/defaultEnvironment/main/install.sh | bash
+# With --force:
+curl -fsSL https://raw.githubusercontent.com/suigetsu312/defaultEnvironment/main/install.sh | bash -s -- --force
 ```
 
 ## What It Does
@@ -25,7 +29,7 @@ curl -fsSL https://raw.githubusercontent.com/suigetsu312/defaultEnvironment/main
 - zsh + Oh My Zsh: Installs Oh My Zsh unattended and sets zsh as default shell.
 - Powerlevel10k: Installs theme and copies `~/.p10k.zsh` from `p10k.zsh.example`.
 - Fonts: Installs MesloLGS Nerd Font locally and refreshes font cache.
-- Neovim: Installs Neovim, copies `~/.config/nvim/init.lua` (and `lazy-lock.json`) from `nvim/`, and runs Lazy to install plugins headlessly.
+- Neovim: Installs Neovim, copies `~/.config/nvim/init.lua` (and `lazy-lock.json`) from `nvim/`, and runs Lazy restore to install plugins from `lazy-lock.json` headlessly.
 - Node.js: Installs nvm, Node.js LTS, yarn, and `instant-markdown-d` globally.
 - tmux: Copies `~/.tmux.conf` from `tmux.conf.example`.
 
@@ -42,5 +46,5 @@ curl -fsSL https://raw.githubusercontent.com/suigetsu312/defaultEnvironment/main
 
 ## Notes
 
-- The installer backs up existing dotfiles it overwrites (e.g., `~/.zshrc.bak.YYYYMMDD-HHMMSS`).
+- The installer skips existing dotfiles by default. With `--force`, it backs up files it overwrites (e.g., `~/.zshrc.bak.YYYYMMDD-HHMMSS`).
 - Re-running the installer is safe; it skips work that is already done.
