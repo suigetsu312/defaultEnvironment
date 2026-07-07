@@ -13,6 +13,8 @@ git clone https://github.com/suigetsu312/defaultEnvironment.git
 cd defaultEnvironment
 git checkout macos
 bash install.sh
+# To replace existing dotfiles after backing them up:
+bash install.sh --force
 ```
 
 Note: this branch is macOS-only. Homebrew is installed automatically if missing.
@@ -28,9 +30,11 @@ git clone https://github.com/suigetsu312/defaultEnvironment.git
 cd defaultEnvironment
 git checkout macos
 bash install.sh
+# To replace existing dotfiles after backing them up:
+bash install.sh --force
 ```
 
-The script is safe to re-run; it skips already-installed components and backs up any dotfiles it replaces.
+The script is safe to re-run. By default it skips existing dotfiles; pass `--force` to back them up and replace them with the repo-managed versions.
 
 ## What It Does
 
@@ -38,7 +42,7 @@ The script is safe to re-run; it skips already-installed components and backs up
 - zsh + Oh My Zsh: Installs Oh My Zsh unattended and sets zsh as default shell.
 - Powerlevel10k: Installs theme and copies `~/.p10k.zsh` from `p10k.zsh.example`.
 - Fonts: Installs MesloLGS Nerd Font into `~/Library/Fonts`.
-- Neovim: Installs Neovim, copies `~/.config/nvim/init.lua` (and `lazy-lock.json`) from `nvim/`, and runs Lazy to install plugins headlessly.
+- Neovim: Installs Neovim, copies `~/.config/nvim/init.lua` (and `lazy-lock.json`) from `nvim/`, and runs Lazy restore to install plugins from `lazy-lock.json` headlessly.
 - Node.js: Installs nvm, Node.js LTS, yarn, and `instant-markdown-d` globally.
 - tmux: Copies `~/.tmux.conf` from `tmux.conf.example`.
 
@@ -55,5 +59,5 @@ The script is safe to re-run; it skips already-installed components and backs up
 
 ## Notes
 
-- The installer backs up existing dotfiles it overwrites (e.g., `~/.zshrc.bak.YYYYMMDD-HHMMSS`).
+- The installer skips existing dotfiles by default. With `--force`, it backs up files it overwrites (e.g., `~/.zshrc.bak.YYYYMMDD-HHMMSS`).
 - Re-running the installer is safe; it skips work that is already done.

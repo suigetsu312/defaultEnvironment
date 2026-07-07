@@ -13,6 +13,34 @@ info() { printf "\033[1;32m[INFO]\033[0m %s\n" "$*"; }
 warn() { printf "\033[1;33m[WARN]\033[0m %s\n" "$*"; }
 err()  { printf "\033[1;31m[ERROR]\033[0m %s\n" "$*"; }
 
+usage() {
+  cat <<EOF
+Usage: bash install.sh [--force]
+
+By default, existing dotfiles are left untouched. Use --force to back up and
+replace managed dotfiles such as ~/.zshrc, ~/.p10k.zsh, ~/.config/nvim/init.lua,
+and ~/.tmux.conf.
+EOF
+}
+
+FORCE=${FORCE:-0}
+for arg in "$@"; do
+  case "$arg" in
+    --force)
+      FORCE=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      err "Unknown option: $arg"
+      usage
+      exit 2
+      ;;
+  esac
+done
+
 backup_file() {
   local target=$1
   if [ -e "$target" ] && [ ! -L "$target" ]; then
@@ -21,6 +49,25 @@ backup_file() {
     cp -f "$target" "${target}.bak.${ts}"
     warn "Backed up $target to ${target}.bak.${ts}"
   fi
+}
+
+install_file() {
+  local source=$1
+  local target=$2
+
+  if [ -e "$target" ] && cmp -s "$source" "$target"; then
+    info "$target already up to date"
+    return
+  fi
+
+  if [ -e "$target" ] && [ "$FORCE" != "1" ]; then
+    warn "$target already exists; use --force to back up and replace it."
+    return
+  fi
+
+  backup_file "$target"
+  cp -f "$source" "$target"
+  info "Installed $target"
 }
 
 require_cmd() {
@@ -89,10 +136,8 @@ fi
 
 # Copy dotfiles with backup
 info "Installing zsh and Powerlevel10k configs"
-backup_file "$HOME/.zshrc"
-cp -f zshrc.example "$HOME/.zshrc"
-backup_file "$HOME/.p10k.zsh"
-cp -f p10k.zsh.example "$HOME/.p10k.zsh"
+install_file zshrc.example "$HOME/.zshrc"
+install_file p10k.zsh.example "$HOME/.p10k.zsh"
 
 # Set default shell to zsh if needed
 ZSH_BIN="$(command -v zsh)"
@@ -112,13 +157,13 @@ fi
 info "Installing MesloLGS Nerd Font locally"
 FONT_DIR="$HOME/Library/Fonts"
 mkdir -p "$FONT_DIR"
-curl -fsSL -o "$FONT_DIR/MesloLGS%20NF%20Regular.ttf" \
+curl -fsSL -o "$FONT_DIR/MesloLGS NF Regular.ttf" \
   https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf
-curl -fsSL -o "$FONT_DIR/MesloLGS%20NF%20Bold.ttf" \
+curl -fsSL -o "$FONT_DIR/MesloLGS NF Bold.ttf" \
   https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold.ttf
-curl -fsSL -o "$FONT_DIR/MesloLGS%20NF%20Italic.ttf" \
+curl -fsSL -o "$FONT_DIR/MesloLGS NF Italic.ttf" \
   https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf
-curl -fsSL -o "$FONT_DIR/MesloLGS%20NF%20Bold%20Italic.ttf" \
+curl -fsSL -o "$FONT_DIR/MesloLGS NF Bold Italic.ttf" \
   https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf
 
 # NVM + Node.js LTS + Yarn + instant-markdown-d
@@ -155,22 +200,20 @@ fi
 info "Installing Neovim configuration"
 NVIM_CONFIG_DIR="$HOME/.config/nvim"
 mkdir -p "$NVIM_CONFIG_DIR"
-backup_file "$NVIM_CONFIG_DIR/init.lua"
-cp -f nvim/init.lua "$NVIM_CONFIG_DIR/init.lua"
-cp -f nvim/lazy-lock.json "$NVIM_CONFIG_DIR/lazy-lock.json"
+install_file nvim/init.lua "$NVIM_CONFIG_DIR/init.lua"
+install_file nvim/lazy-lock.json "$NVIM_CONFIG_DIR/lazy-lock.json"
 
 # Install Neovim plugins headlessly (optional but handy)
 if command -v nvim >/dev/null 2>&1; then
   info "Installing Neovim plugins (non-interactive)"
-  nvim --headless "+Lazy! sync" +qa || warn "Neovim plugin installation had non-fatal issues."
+  nvim --headless "+Lazy! restore" +qa || warn "Neovim plugin installation had non-fatal issues."
 else
   warn "Neovim not found in PATH; skipping plugin installation."
 fi
 
 # Tmux config
 info "Installing tmux configuration"
-backup_file "$HOME/.tmux.conf"
-cp -f tmux.conf.example "$HOME/.tmux.conf"
+install_file tmux.conf.example "$HOME/.tmux.conf"
 
 cat <<'EOM'
 

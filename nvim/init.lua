@@ -155,11 +155,27 @@ require("lazy").setup({
     -------------------------------------------------------
     {
       "nvim-treesitter/nvim-treesitter",
+      branch = "master",
       build = ":TSUpdate",
       config = function()
         require("nvim-treesitter.configs").setup({
+          ensure_installed = {
+            "lua",
+            "vim",
+            "vimdoc",
+            "query",
+            "c",
+            "cpp",
+            "python",
+            "bash",
+            "json",
+            "yaml",
+            "cmake",
+            "markdown",
+            "markdown_inline",
+          },
           highlight = { enable = true },
-          indent = { enable = true },
+          indent = { enable = false },
         })
       end,
     },
