@@ -19,10 +19,12 @@ bash install.sh
 ```
 
 To update an existing checkout, run `git pull --ff-only` on `main`, then
-`bash install.sh` again. The installer copies configuration files (it does not
-create symlinks); changed regular files are backed up with a timestamp before
-replacement, identical files are left untouched, and existing symlinks are
-preserved. tmux helper scripts are installed under
+`bash install.sh` again. Before installing, the script reports which apt
+packages and configuration files already exist, skips installed packages, and
+only downloads missing fonts. The installer copies configuration files (it does
+not create symlinks); changed regular files are backed up with a timestamp
+before replacement, identical files are left untouched, and existing symlinks
+are preserved. tmux helper scripts are installed under
 `~/.local/lib/defaultenv/`, and project functions under
 `~/.config/defaultenv/`.
 

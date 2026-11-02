@@ -44,23 +44,71 @@ install_file() {
   cp "$source" "$target"
 }
 
+preflight_file() {
+  local source=$1
+  local target=$2
+
+  if [ -L "$target" ]; then
+    info "Preflight: preserving existing symlink $target"
+  elif [ -f "$target" ] && cmp -s "$source" "$target"; then
+    info "Preflight: $target already exists and is up to date"
+  elif [ -e "$target" ]; then
+    info "Preflight: $target exists; it will be backed up before updating"
+  else
+    info "Preflight: $target is missing and will be installed"
+  fi
+}
+
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || return 1
 }
 
-# Keep sudo alive (if available)
-if command -v sudo >/dev/null 2>&1; then
-  info "Caching sudo credentials (if prompted, enter your password)"
-  sudo -v || true
-fi
+info "Checking existing configuration before installation"
+preflight_file zshrc.example "$HOME/.zshrc"
+preflight_file p10k.zsh.example "$HOME/.p10k.zsh"
+preflight_file shell-functions.zsh "$HOME/.config/defaultenv/shell-functions.zsh"
+preflight_file scripts/tmux-copy.sh "$HOME/.local/lib/defaultenv/tmux-copy.sh"
+preflight_file scripts/tmux-lazygit.sh "$HOME/.local/lib/defaultenv/tmux-lazygit.sh"
+preflight_file nvim/init.lua "$HOME/.config/nvim/init.lua"
+preflight_file nvim/lazy-lock.json "$HOME/.config/nvim/lazy-lock.json"
+preflight_file tmux.conf.example "$HOME/.tmux.conf"
 
-info "Updating apt package index and installing base packages"
 if require_cmd apt-get; then
-  sudo apt-get update -y
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    ca-certificates curl git zsh tmux neovim fzf zoxide xdg-utils fontconfig
-  if apt-cache show lazygit >/dev/null 2>&1; then
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lazygit
+  base_packages=(ca-certificates curl git zsh tmux neovim fzf zoxide xdg-utils fontconfig)
+  missing_packages=()
+  for package in "${base_packages[@]}"; do
+    if dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null | grep -qx installed; then
+      info "Preflight: package $package is already installed"
+    else
+      info "Preflight: package $package is missing"
+      missing_packages+=("$package")
+    fi
+  done
+
+  if [ "${#missing_packages[@]}" -gt 0 ]; then
+    if command -v sudo >/dev/null 2>&1; then
+      info "Caching sudo credentials (if prompted, enter your password)"
+      sudo -v
+      info "Updating apt index and installing missing packages"
+      sudo apt-get update -y
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${missing_packages[@]}"
+    else
+      err "sudo is required to install missing apt packages: ${missing_packages[*]}"
+      exit 1
+    fi
+  else
+    info "All required apt packages are already installed; skipping apt update/install"
+  fi
+
+  if require_cmd lazygit; then
+    info "Preflight: lazygit is already installed"
+  elif apt-cache show lazygit >/dev/null 2>&1; then
+    if command -v sudo >/dev/null 2>&1; then
+      info "Preflight: lazygit is missing; installing it"
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lazygit
+    else
+      warn "lazygit is available but sudo is unavailable; install it manually if needed."
+    fi
   else
     warn "lazygit is not available in the configured apt repositories; install it separately if needed."
   fi
@@ -69,7 +117,7 @@ else
 fi
 
 # Install Oh My Zsh (unattended, don't switch shell now)
-if [ ! -d "$HOME/.oh-my-zsh" ]; then
+if [ ! -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]; then
   info "Installing Oh My Zsh (unattended)"
   export RUNZSH=no
   export CHSH=no
@@ -110,17 +158,20 @@ if [ "${SHELL:-}" != "$(command -v zsh)" ]; then
 fi
 
 # Install Meslo Nerd Fonts locally for P10k
-info "Installing MesloLGS Nerd Font locally"
+info "Checking MesloLGS Nerd Fonts"
 FONT_DIR="$HOME/.local/share/fonts/MesloLGS-NF"
 mkdir -p "$FONT_DIR"
-curl -fsSL -o "$FONT_DIR/MesloLGS%20NF%20Regular.ttf" \
-  https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf
-curl -fsSL -o "$FONT_DIR/MesloLGS%20NF%20Bold.ttf" \
-  https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold.ttf
-curl -fsSL -o "$FONT_DIR/MesloLGS%20NF%20Italic.ttf" \
-  https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf
-curl -fsSL -o "$FONT_DIR/MesloLGS%20NF%20Bold%20Italic.ttf" \
-  https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf
+for font in "Regular" "Bold" "Italic" "Bold Italic"; do
+  encoded_font=${font// /%20}
+  font_file="$FONT_DIR/MesloLGS%20NF%20${encoded_font}.ttf"
+  if [ -s "$font_file" ]; then
+    info "Preflight: Meslo font $font already exists"
+  else
+    info "Installing missing Meslo font: $font"
+    curl -fsSL -o "$font_file" \
+      "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20${encoded_font}.ttf"
+  fi
+done
 if command -v fc-cache >/dev/null 2>&1; then
   fc-cache -f "$HOME/.local/share/fonts" || true
 fi
@@ -143,13 +194,26 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
 if require_cmd nvm; then
-  info "Installing Node.js LTS via nvm"
-  nvm install --lts
+  if nvm ls --no-colors 'lts/*' 2>/dev/null | grep -Eq 'v[0-9]+\.'; then
+    info "Preflight: a Node.js LTS version is already installed"
+  else
+    info "Installing missing Node.js LTS via nvm"
+    nvm install --lts
+  fi
   nvm alias default 'lts/*'
-  # Ensure npm and yarn, then markdown preview server
   if require_cmd npm; then
-    info "Installing global npm packages (yarn, instant-markdown-d)"
-    npm install -g yarn instant-markdown-d
+    missing_npm_packages=()
+    for package in yarn instant-markdown-d; do
+      if npm list -g --depth=0 "$package" >/dev/null 2>&1; then
+        info "Preflight: global npm package $package is already installed"
+      else
+        info "Preflight: global npm package $package is missing"
+        missing_npm_packages+=("$package")
+      fi
+    done
+    if [ "${#missing_npm_packages[@]}" -gt 0 ]; then
+      npm install -g "${missing_npm_packages[@]}"
+    fi
   fi
 else
   warn "nvm not available in current shell; skip Node.js installation."
