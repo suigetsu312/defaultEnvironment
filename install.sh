@@ -9,6 +9,9 @@ fi
 # Safe bash defaults
 set -euo pipefail
 
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+cd "$SCRIPT_DIR"
+
 info() { printf "\033[1;32m[INFO]\033[0m %s\n" "$*"; }
 warn() { printf "\033[1;33m[WARN]\033[0m %s\n" "$*"; }
 err()  { printf "\033[1;31m[ERROR]\033[0m %s\n" "$*"; }
@@ -21,6 +24,24 @@ backup_file() {
     cp -f "$target" "${target}.bak.${ts}"
     warn "Backed up $target to ${target}.bak.${ts}"
   fi
+}
+
+install_file() {
+  local source=$1
+  local target=$2
+
+  if [ -L "$target" ]; then
+    warn "Leaving existing symlink unchanged: $target"
+    return 0
+  fi
+  if [ -f "$target" ] && cmp -s "$source" "$target"; then
+    info "$target is already up to date"
+    return 0
+  fi
+
+  backup_file "$target"
+  mkdir -p "$(dirname "$target")"
+  cp "$source" "$target"
 }
 
 require_cmd() {
@@ -37,7 +58,12 @@ info "Updating apt package index and installing base packages"
 if require_cmd apt-get; then
   sudo apt-get update -y
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    ca-certificates curl git zsh tmux neovim xdg-utils fontconfig
+    ca-certificates curl git zsh tmux neovim fzf zoxide xdg-utils fontconfig
+  if apt-cache show lazygit >/dev/null 2>&1; then
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lazygit
+  else
+    warn "lazygit is not available in the configured apt repositories; install it separately if needed."
+  fi
 else
   warn "apt-get not found. Please install dependencies manually."
 fi
@@ -65,10 +91,13 @@ fi
 
 # Copy dotfiles with backup
 info "Installing zsh and Powerlevel10k configs"
-backup_file "$HOME/.zshrc"
-cp -f zshrc.example "$HOME/.zshrc"
-backup_file "$HOME/.p10k.zsh"
-cp -f p10k.zsh.example "$HOME/.p10k.zsh"
+install_file zshrc.example "$HOME/.zshrc"
+install_file p10k.zsh.example "$HOME/.p10k.zsh"
+install_file shell-functions.zsh "$HOME/.config/defaultenv/shell-functions.zsh"
+
+TMUX_HELPER_DIR="$HOME/.local/lib/defaultenv"
+install_file scripts/tmux-copy.sh "$TMUX_HELPER_DIR/tmux-copy.sh"
+install_file scripts/tmux-lazygit.sh "$TMUX_HELPER_DIR/tmux-lazygit.sh"
 
 # Set default shell to zsh if needed
 if [ "${SHELL:-}" != "$(command -v zsh)" ]; then
@@ -130,9 +159,8 @@ fi
 info "Installing Neovim configuration"
 NVIM_CONFIG_DIR="$HOME/.config/nvim"
 mkdir -p "$NVIM_CONFIG_DIR"
-backup_file "$NVIM_CONFIG_DIR/init.lua"
-cp -f nvim/init.lua "$NVIM_CONFIG_DIR/init.lua"
-cp -f nvim/lazy-lock.json "$NVIM_CONFIG_DIR/lazy-lock.json"
+install_file nvim/init.lua "$NVIM_CONFIG_DIR/init.lua"
+install_file nvim/lazy-lock.json "$NVIM_CONFIG_DIR/lazy-lock.json"
 
 # Install Neovim plugins headlessly (optional but handy)
 if command -v nvim >/dev/null 2>&1; then
@@ -144,8 +172,7 @@ fi
 
 # Tmux config
 info "Installing tmux configuration"
-backup_file "$HOME/.tmux.conf"
-cp -f tmux.conf.example "$HOME/.tmux.conf"
+install_file tmux.conf.example "$HOME/.tmux.conf"
 
 cat <<'EOM'
 

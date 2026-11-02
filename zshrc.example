@@ -6,7 +6,6 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
 fi
 
 # If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:/usr/local/bin:$PATH
 
 # Path to your oh-my-zsh installation.
 export ZSH=$HOME/.oh-my-zsh
@@ -81,6 +80,42 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 plugins=(git)
 
 source $ZSH/oh-my-zsh.sh
+
+# Load fzf's packaged Zsh key bindings/completion when available. Newer fzf
+# releases provide the same setup directly through `fzf --zsh`.
+_defaultenv_init_fzf() {
+  local fzf_init_loaded=false
+  local fzf_init fzf_zsh_init
+
+  (( $+commands[fzf] )) || return 0
+  for fzf_init in /usr/share/doc/fzf/examples/key-bindings.zsh /usr/share/fzf/key-bindings.zsh; do
+    if [[ -r $fzf_init ]]; then
+      source "$fzf_init"
+      fzf_init_loaded=true
+      if [[ -r ${fzf_init:h}/completion.zsh ]]; then
+        source "${fzf_init:h}/completion.zsh"
+      fi
+      break
+    fi
+  done
+  if [[ $fzf_init_loaded == false ]]; then
+    fzf_zsh_init=$(fzf --zsh 2>/dev/null) && eval "$fzf_zsh_init"
+  fi
+}
+if [[ -z ${_DEFAULTENV_FZF_INITIALIZED:-} ]]; then
+  _defaultenv_init_fzf
+  if (( $+commands[fzf] )); then
+    _DEFAULTENV_FZF_INITIALIZED=1
+  fi
+fi
+unfunction _defaultenv_init_fzf
+
+if (( $+commands[zoxide] )) && [[ -z ${_DEFAULTENV_ZOXIDE_INITIALIZED:-} ]]; then
+  eval "$(zoxide init zsh)"
+  _DEFAULTENV_ZOXIDE_INITIALIZED=1
+fi
+
+[[ ! -r "$HOME/.config/defaultenv/shell-functions.zsh" ]] || source "$HOME/.config/defaultenv/shell-functions.zsh"
 
 # User configuration
 
